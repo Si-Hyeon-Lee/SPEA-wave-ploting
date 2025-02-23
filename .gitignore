@@ -1,1 +1,5 @@
 waviwer_virtualenv/
+SPEA_waviewer/
+error_log.txt
+build/
+dist/

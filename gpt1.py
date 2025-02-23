@@ -1,4 +1,8 @@
+#C:\Users\go122\Desktop\waveiwer\SPEA_waviewer\Analysis HK3-HK3A-HK4\378000E130JNB10002\New gate Driver\AC_ILM_L7_600V_780A_+15.0V_-05.0V_000.50ohm_006.00ohm_000.00ohm
+#C:\Users\go122\Desktop\waveiwer\SPEA_waviewer\Analysis HK3-HK3A-HK4\378000E130JNB10002\Old Gate Driver\AC_ILM_L7_600V_780A_+15.0V_-05.0V_000.47ohm_006.20ohm_000.00ohm
+#C:\Users\go122\Desktop\waveiwer\SPEA_waviewer\MOBIS\HK4_waveform data\OLD_WF\AC_ILM_L7_350V_400A_+15.0V_-05.0V_000.47ohm_010.00ohm_000.00ohm
 
+# Log 뒤져보기.
 
 import os
 import sys
