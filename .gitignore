@@ -3,3 +3,6 @@ SPEA_waviewer/
 error_log.txt
 build/
 dist/
+*.log
+original_wave_img_maker.py
+*.spec
