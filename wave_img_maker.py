@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 import numpy as np
@@ -5,7 +6,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from matplotlib.ticker import MultipleLocator
 import matplotlib.pyplot as plt
-import sys
+
 
 # --------------------------------------------------------------------------
 # 1) Min-Max 스케일링 함수 (사용 안 함) - 필요시 참조
@@ -61,7 +62,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red'):
         'VGE': (10.0, 'V'),    # 10 V / div
         'VCE': (200.0, 'V'),   # 200 V / div
         'ICE': (200.0, 'A'),   # 200 A / div
-        'POW1': (100.0, 'kW'), # 100 kW / div
+        'POW1': (100000.0 ,'kW') #(100.0, 'kW'), # 100 kW / div
     }
 
     plt.figure(figsize=(16, 8))

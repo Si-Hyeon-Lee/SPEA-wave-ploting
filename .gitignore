@@ -6,3 +6,5 @@ dist/
 *.log
 original_wave_img_maker.py
 *.spec
+a.py
+requirements.txt
