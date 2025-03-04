@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 import numpy as np
@@ -5,7 +6,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from matplotlib.ticker import MultipleLocator
 import matplotlib.pyplot as plt
-import sys
+
 
 # --------------------------------------------------------------------------
 # 1) Min-Max 스케일링 함수 (사용 안 함) - 필요시 참조
@@ -61,7 +62,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red'):
         'VGE': (10.0, 'V'),    # 10 V / div
         'VCE': (200.0, 'V'),   # 200 V / div
         'ICE': (200.0, 'A'),   # 200 A / div
-        'POW1': (100.0, 'kW'), # 100 kW / div
+        'POW1': (100000.0 ,'kW') #(100.0, 'kW'), # 100 kW / div
     }
 
     plt.figure(figsize=(16, 8))
@@ -70,7 +71,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red'):
     labels = list(data_dict.keys())
 
     # Offset 간격(크게 잡아서 파형 겹침 방지)
-    offset_distance = 6.0  
+    offset_distance = 8.0  
     offsets = [i * offset_distance for i in range(len(labels))]
 
     # y축 최댓값 추적 (동적으로 결정)
@@ -110,6 +111,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red'):
         #     - label[-4:].removeprefix('_') => VGE, VCE 등
         short_name = label[-4:].removeprefix('_').upper()  # "VGE", "VCE" ...
         legend_str = f"{short_name} (1 div = {unit_per_div})"
+        if short_name == 'POW1': legend_str = f"{short_name} (1 div = {scale_map[short_name][0]/1000.0} {scale_map[short_name][1]})"
 
         line_obj, = plt.plot(x_vals, offset_data, color=line_color, linewidth=1.0,
                              label=legend_str)
@@ -197,11 +199,12 @@ def process_directory(dir_path):
     # 예시: AC_L7_600V_400A 라면, 4개 파일(HS_VGE, HS_VCE, HS_ICE, HS_POW1) / (LS_VGE, LS_VCE, LS_ICE, LS_POW1) 처리
     # 아니면, 3개 파일(HS_VGE, HS_VCE, HS_ICE) / (LS_VGE, LS_VCE, LS_ICE) 처리 (기존 로직)
 
-    if "AC_L7_600V_400A" in dir_name:
+    if "AC_L7_600V_40" in dir_name: # 원래는 400A 였으나 408A 도 있어서 이렇게 수정. 
         plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
 
         # High Side
         h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt", "IGBT1_HS_POW1.txt"]
+        h_files.reverse()
         data_dict_h = {}
         for hf in h_files:
             full_path = os.path.join(dir_path, hf)
@@ -212,6 +215,7 @@ def process_directory(dir_path):
 
         # Low Side
         l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt", "IGBT2_LS_POW1.txt"]
+        l_files.reverse()
         data_dict_l = {}
         for lf in l_files:
             full_path = os.path.join(dir_path, lf)
@@ -225,6 +229,7 @@ def process_directory(dir_path):
         
         # High Side
         h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt"]
+        h_files.reverse()
         data_dict_h = {}
         for hf in h_files:
             full_path = os.path.join(dir_path, hf)
@@ -235,6 +240,7 @@ def process_directory(dir_path):
 
         # Low Side
         l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt"]
+        l_files.reverse()
         data_dict_l = {}
         for lf in l_files:
             full_path = os.path.join(dir_path, lf)
