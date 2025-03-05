@@ -82,8 +82,8 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red'):
 
     for idx, label in enumerate(labels):
         raw_data = data_dict[label][1:]  # 앞부분 1개 샘플 버리기 (기존 로직)
-        if not raw_data:
-            print(f"[Warning] '{label}' has no data.")
+        if not raw_data :
+            print(f"[Warning] No '{label}' data in {output_path} Folder.")
             continue
 
         # (2) 스케일 선택: label 내에 VGE, VCE, ICE, POW1 등을 탐색
@@ -196,58 +196,29 @@ def process_directory(dir_path):
 
     dir_name = os.path.basename(dir_path)
 
-    # 예시: AC_L7_600V_400A 라면, 4개 파일(HS_VGE, HS_VCE, HS_ICE, HS_POW1) / (LS_VGE, LS_VCE, LS_ICE, LS_POW1) 처리
-    # 아니면, 3개 파일(HS_VGE, HS_VCE, HS_ICE) / (LS_VGE, LS_VCE, LS_ICE) 처리 (기존 로직)
-
-    if "AC_L7_600V_40" in dir_name: # 원래는 400A 였으나 408A 도 있어서 이렇게 수정. 
-        plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
-
-        # High Side
-        h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt", "IGBT1_HS_POW1.txt"]
-        h_files.reverse()
-        data_dict_h = {}
-        for hf in h_files:
-            full_path = os.path.join(dir_path, hf)
-            label = hf.replace(".txt", "")
-            data_dict_h[label] = load_txt_file(full_path)
-        output_h = os.path.join(dir_path, f"{plt_name}_High_Side.jpg")
-        plot_and_save_offset(data_dict_h, output_h, title=f"{plt_name}_High_Side", line_color='red')
-
-        # Low Side
-        l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt", "IGBT2_LS_POW1.txt"]
-        l_files.reverse()
-        data_dict_l = {}
-        for lf in l_files:
-            full_path = os.path.join(dir_path, lf)
-            label = lf.replace(".txt", "")
-            data_dict_l[label] = load_txt_file(full_path)
-        output_l = os.path.join(dir_path, f"{plt_name}_Low_Side.jpg")
-        plot_and_save_offset(data_dict_l, output_l, title=f"{plt_name}_Low_Side", line_color='blue')
-
-    else:
-        plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
+    plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
         
         # High Side
-        h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt"]
-        h_files.reverse()
-        data_dict_h = {}
-        for hf in h_files:
-            full_path = os.path.join(dir_path, hf)
-            label = hf.replace(".txt", "")
-            data_dict_h[label] = load_txt_file(full_path)
-        output_h = os.path.join(dir_path, f"{plt_name}_High_Side.jpg")
-        plot_and_save_offset(data_dict_h, output_h, title=f"{plt_name}_High_Side", line_color='red')
+    h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt","IGBT1_HS_POW1.txt"]
+    h_files.reverse()
+    data_dict_h = {}
+    for hf in h_files:
+        full_path = os.path.join(dir_path, hf)
+        label = hf.replace(".txt", "")
+        data_dict_h[label] = load_txt_file(full_path)
+    output_h = os.path.join(dir_path, f"{plt_name}_High_Side.jpg")
+    plot_and_save_offset(data_dict_h, output_h, title=f"{plt_name}_High_Side", line_color='red')
 
-        # Low Side
-        l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt"]
-        l_files.reverse()
-        data_dict_l = {}
-        for lf in l_files:
-            full_path = os.path.join(dir_path, lf)
-            label = lf.replace(".txt", "")
-            data_dict_l[label] = load_txt_file(full_path)
-        output_l = os.path.join(dir_path, f"{plt_name}_Low_Side.jpg")
-        plot_and_save_offset(data_dict_l, output_l, title=f"{plt_name}_Low_Side", line_color='blue')
+    # Low Side
+    l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt","IGBT2_LS_POW1.txt"]
+    l_files.reverse()
+    data_dict_l = {}
+    for lf in l_files:
+        full_path = os.path.join(dir_path, lf)
+        label = lf.replace(".txt", "")
+        data_dict_l[label] = load_txt_file(full_path)
+    output_l = os.path.join(dir_path, f"{plt_name}_Low_Side.jpg")
+    plot_and_save_offset(data_dict_l, output_l, title=f"{plt_name}_Low_Side", line_color='blue')
 
 # --------------------------------------------------------------------------
 # 5) Watchdog 핸들러
