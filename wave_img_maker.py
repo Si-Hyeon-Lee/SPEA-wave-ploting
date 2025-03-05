@@ -111,6 +111,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red'):
         #     - label[-4:].removeprefix('_') => VGE, VCE 등
         short_name = label[-4:].removeprefix('_').upper()  # "VGE", "VCE" ...
         legend_str = f"{short_name} (1 div = {unit_per_div})"
+        if short_name == 'POW1': legend_str = f"{short_name} (1 div = {scale_map[short_name][0]/1000.0} {scale_map[short_name][1]})"
 
         line_obj, = plt.plot(x_vals, offset_data, color=line_color, linewidth=1.0,
                              label=legend_str)
