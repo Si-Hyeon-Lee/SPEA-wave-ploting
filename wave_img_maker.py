@@ -134,6 +134,37 @@ def plot_and_save(data_dict, output_path, title, line_color='red'):
     print(f"[INFO] Saved Plot : {output_path}")
 
 
+def get_img_name(dir_path:str):
+    '''
+    Parsing dir_name for get img file name.
+    dir_name should be absolute path with containing _ 
+    
+     C:\!FAIL_WFM\HK3_ACH_rev000\TEST_LOT_ID_378000E130PS2C0012_AB2507030012_20250305_155743\AC_L7_600V_408A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
+
+    -> 378000E130PS2C0012_AC_SW_High_Side.jpg
+    '''
+    test_item = {
+        ('HK3','400') : 'SW',
+        ('HK3','780') : 'RBSOA1',
+        ('HK3','1000') : 'RBSOA2',
+
+        ('HK3A','400') : 'SW',
+        ('HK3A','780') : 'RBSOA1',
+        ('HK3A','1000') : 'RBSOA2',
+
+        ('HK5','400') : 'SW',
+        ('HK5','780') : 'RBSOA1',
+        ('HK5','1000') : 'RBSOA2',
+
+    }
+    
+    dirs=dir_path.split('\\')
+    
+    for k in test_item.keys()
+
+    dirs[2]
+
+
 def process_directory(dir_path):
     '''
     DFS serach. if dir_path contains txt file then start ploting.
@@ -150,7 +181,8 @@ def process_directory(dir_path):
     
     # FOUND TXT
     dir_name = os.path.basename(dir_path)
-
+    
+    
     if "AC_L7_600V_40" in dir_name: 
         plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
 
