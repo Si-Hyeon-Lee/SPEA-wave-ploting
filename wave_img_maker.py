@@ -27,6 +27,46 @@ def load_txt_file(txt_path):
                     pass
     return data
 
+def get_img_name(dir_path:str,is_high_side:bool):
+    '''
+    Parsing dir_name for get img file name.
+    dir_name should be absolute path with containing _ 
+    
+     C:\!FAIL_WFM\HK3_ACH_rev000\TEST_LOT_ID_378000E130PS2C0012_AB2507030012_20250305_155743\AC_L7_600V_408A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
+
+    -> 378000E130PS2C0012_AC_SW_High_Side.jpg
+    '''
+    test_item = {
+        ('HK3','400A',0.5,0.5) : 'SW',
+        ('HK3','780A',0.5,6) : 'RBSOA1',
+        ('HK3','1000A',0.5,6) : 'RBSOA2',
+
+        ('HK3A','400A',0.5,0.5) : 'SW',
+        ('HK3A','780A',0.5,6) : 'RBSOA1',
+        ('HK3A','1000A',0.5,6) : 'RBSOA2',
+
+        ('HK5','200A',0.5,0.5) : 'SW',
+        ('HK5','390A',0.5,6) : 'RBSOA1',
+        ('HK5','500A',0.5,6) : 'RBSOA2',
+
+    }
+    
+    dirs=dir_path.split('\\')
+    # ['C:', '!FAIL_WFM', 'HK3_ACH_rev000', 'TEST_LOT_ID_378000E130PS2C0012_AB2507030012_20250305_155743', 'AC_L7_600V_408A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm']
+    bacord = dirs[3].split('_')[3]
+    print(bacord)
+
+    # Find HK
+    tmp = dirs[4].split('_')
+    k = (dirs[2].split('_')[0] ,tmp[3],float(tmp[6].removesuffix('ohm')),float(tmp[7].removesuffix('ohm')) )
+    print(k)
+
+    if is_high_side:
+        return f'{bacord}_AC_{test_item[k]}_High_Side.jpg'
+    return f'{bacord}_AC_{test_item[k]}_Low_Side.jpg'
+    
+
+
 
 def plot_and_save(data_dict, output_path, title, line_color='red'):
     """
