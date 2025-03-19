@@ -38,17 +38,18 @@ def get_img_name(dir_path:str,is_high_side:bool):
     '''
     test_item = {
         ('HK3','400A',0.5,0.5) : 'SW',
+        ('HK3','408A',0.5,0.5) : 'SW',
         ('HK3','780A',0.5,6) : 'RBSOA1',
         ('HK3','1000A',0.5,6) : 'RBSOA2',
 
         ('HK3A','400A',0.5,0.5) : 'SW',
+        ('HK3A','408A',0.5,0.5) : 'SW',
         ('HK3A','780A',0.5,6) : 'RBSOA1',
         ('HK3A','1000A',0.5,6) : 'RBSOA2',
 
         ('HK5','200A',0.5,0.5) : 'SW',
         ('HK5','390A',0.5,6) : 'RBSOA1',
         ('HK5','500A',0.5,6) : 'RBSOA2',
-
     }
     
     dirs=dir_path.split('\\')
@@ -61,9 +62,14 @@ def get_img_name(dir_path:str,is_high_side:bool):
     k = (dirs[2].split('_')[0] ,tmp[3],float(tmp[6].removesuffix('ohm')),float(tmp[7].removesuffix('ohm')) )
     print(k)
 
+    if '_SC' in dir_path: 
+        test_type = 'SC' 
+    else :
+        test_type =test_item[k]
+
     if is_high_side:
-        return f'{bacord}_AC_{test_item[k]}_High_Side.jpg'
-    return f'{bacord}_AC_{test_item[k]}_Low_Side.jpg'
+        return f'{bacord}_AC_{test_type}_High_Side.jpg'
+    return f'{bacord}_AC_{test_type}_Low_Side.jpg'
     
 
 
@@ -234,7 +240,7 @@ def process_directory(dir_path):
             full_path = os.path.join(dir_path, hf)
             label = hf.replace(".txt", "")
             data_dict_h[label] = load_txt_file(full_path)
-        output_h = os.path.join(dir_path, f"{plt_name}_High_Side.jpg")
+        output_h = os.path.join(dir_path,get_img_name(dir_path=dir_path,is_high_side=True))
         plot_and_save(data_dict_h, output_h, title=f"{plt_name}_High_Side", line_color='red')
 
         # Low Side
@@ -245,7 +251,8 @@ def process_directory(dir_path):
             full_path = os.path.join(dir_path, lf)
             label = lf.replace(".txt", "")
             data_dict_l[label] = load_txt_file(full_path)
-        output_l = os.path.join(dir_path, f"{plt_name}_Low_Side.jpg")
+        #output_l = os.path.join(dir_path, f"{plt_name}_Low_Side.jpg")
+        output_l = os.path.join(dir_path,get_img_name(dir_path=dir_path,is_high_side=False))
         plot_and_save(data_dict_l, output_l, title=f"{plt_name}_Low_Side", line_color='blue')
 
     else:
@@ -259,7 +266,7 @@ def process_directory(dir_path):
             full_path = os.path.join(dir_path, hf)
             label = hf.replace(".txt", "")
             data_dict_h[label] = load_txt_file(full_path)
-        output_h = os.path.join(dir_path, f"{plt_name}_High_Side.jpg")
+        output_h = os.path.join(dir_path,get_img_name(dir_path=dir_path,is_high_side=True))
         plot_and_save(data_dict_h, output_h, title=f"{plt_name}_High_Side", line_color='red')
 
         # Low Side
@@ -270,7 +277,7 @@ def process_directory(dir_path):
             full_path = os.path.join(dir_path, lf)
             label = lf.replace(".txt", "")
             data_dict_l[label] = load_txt_file(full_path)
-        output_l = os.path.join(dir_path, f"{plt_name}_Low_Side.jpg")
+        output_l = os.path.join(dir_path, get_img_name(dir_path=dir_path,is_high_side=False))
         plot_and_save(data_dict_l, output_l, title=f"{plt_name}_Low_Side", line_color='blue')
 
 # WathDogHandler for File Creation Event handle.
