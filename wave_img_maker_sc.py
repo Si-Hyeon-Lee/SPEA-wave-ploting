@@ -49,21 +49,15 @@ def get_img_name(dir_path:str,is_high_side:bool):
     dirs=dir_path.split('\\')
     bacord = dirs[4].split('_')[3]
     '''
-    C:\
-        !FAIL_WFM\
-            AC_HK3A_OSAT_V00\
-                20250318_143933\
-                    TEST_LOT_ID_378001X000JR590181_20250318_143933\
-                        AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
+    C:\  0
+        !FAIL_WFM\ 1
+            AC_HK3A_OSAT_V00\ 2 
+                20250318_143933\ 3 
+                    TEST_LOT_ID_378001X000JR590181_20250318_143933\  4 
+                        AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm 5
 
-
-    C:\
-        !FAIL_WFM - original_0317\
-            HK3_ACH_rev000\
-                TEST_LOT_ID_378000E130PS2C0012_AB2507030012_20250305_155743\
-                    AC_L7_600V_408A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
     '''
-    tmp = dirs[4].split('_')
+    tmp = dirs[5].split('_')
     k = (
         dirs[2].split('_')[0],
         tmp[3],
@@ -81,19 +75,20 @@ def get_img_name(dir_path:str,is_high_side:bool):
     
 def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=False):
     """
-    Ploting wave data and save it to output_path.
+    Plot wave data and save to output_path with dynamic offset if 'is_sc' is True.
     data_dict: { "IGBT1_HS_VGE": [...], "IGBT1_HS_VCE": [...], ... }
-    output_path: jpg file path , usually same as input data path.
-    title: Title of graph, usually same as input data's folder.
+    output_path: jpg file path, usually same as input data path.
+    title: Title of the graph, usually same as input data's folder.
     line_color: HS -> 'red', LS -> 'blue'
-    is_sc: True if folder name contains '_SC'. Then only 25%~75% plot.
+    is_sc: True if folder name contains '_SC'. Then waveforms are dynamically offset 
+           to avoid overlap.
     """
 
     scale_map = {
-        'VGE': (10.0, 'V'),      # 10 V / div
-        'VCE': (200.0, 'V'),     # 200 V / div
-        'ICE': (200.0, 'A'),     # 200 A / div
-        'POW1': (100000.0 ,'kW') # 100 kW / div (100000 = 100k in raw scale)
+        'VGE': (10.0, 'V'),        # 10 V / div
+        'VCE': (200.0, 'V'),       # 200 V / div
+        'ICE': (200.0, 'A'),       # 200 A / div
+        'POW1': (100000.0, 'kW')   # 100 kW / div (100000 = 100k in raw scale)
     }
 
     plt.figure(figsize=(16, 8))
@@ -101,37 +96,36 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
 
     labels = list(data_dict.keys())
     
-    # [1] _SC 여부에 따라 전체 데이터 길이(N)를 파악하고, 
-    #     25% ~ 75% 구간(start_i, end_i)을 지정한다.
-    #     (여러 라벨이 있더라도, 우선 '최대길이'를 기준으로 잡을 수 있음)
+    # [1] Determine the plotting range based on whether it's SC or not
     N_list = []
     for lbl in labels:
-        N_list.append(len(data_dict[lbl]) - 1)  # 첫 값은 길이 정보이므로 -1
+        N_list.append(len(data_dict[lbl]) - 1)  # Each array's first element is length info
     max_len = max(N_list) if N_list else 0
 
     if is_sc and max_len > 4:
         start_i = int(max_len * 0.40)
-        end_i   = int(max_len * 0.70)
+        end_i = int(max_len * 0.70)
     else:
         start_i = 0
-        end_i   = max_len
+        end_i = max_len
 
-    # offset_distance: 파형들을 위로 조금씩 이동하기 위한 오프셋 간격
-    offset_distance = 8.0  
-    offsets = [i * offset_distance for i in range(len(labels))]
+    # Prepare offset logic
+    # If '_SC' in directory => dynamic offset, else => fixed offset (8.0 increments)
+    fixed_offset_distance = 8.0
+    current_top = 0.0  # Tracks top of previously plotted waveform when using dynamic offsets
+
     y_lim_top = 0.0
     line_objs = []
 
     for idx, label in enumerate(labels):
-        raw_data = data_dict[label][1:]  # 첫 번째 값(length)은 제외
+        raw_data = data_dict[label][1:]  # Drop first value
         if not raw_data:
-            print(f"[Warning] No '{label}' data in {output_path} Folder.")
+            print(f"[Warning] No '{label}' data in {output_path} folder.")
             continue
 
-        # (2) 실제 그릴 구간은 [start_i, end_i]
         partial_data = raw_data[start_i:end_i]
 
-        # 스케일 (예: VGE -> 10 V/div 등)
+        # (2) Determine scale factor based on label
         scale_factor = 1.0
         unit_per_div = '?'
         for key in scale_map:
@@ -139,15 +133,28 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
                 scale_factor = 1.0 / scale_map[key][0]
                 unit_per_div = f"{scale_map[key][0]} {scale_map[key][1]}"
                 break
-        
+
         scaled_data = [val * scale_factor for val in partial_data]
-        offset_val = offsets[idx]
-        offset_data = [val + offset_val for val in scaled_data]
 
-        # (3) X축: start_i부터 end_i까지의 인덱스를 1kHz 스텝(=0.001 s)으로 사용
-        x_vals = [i/1000.0 for i in range(start_i, end_i)]
+        # (3) Calculate dynamic or fixed offset
+        if is_sc:
+            # For SC directories, dynamically compute offset to avoid overlap
+            local_min = min(scaled_data) if scaled_data else 0
+            local_max = max(scaled_data) if scaled_data else 0
+            # Shift so that local_min is slightly above current_top
+            offset_val = current_top - local_min + 1.0  # +1.0 margin
+            offset_data = [val + offset_val for val in scaled_data]
+            # Update current_top for the next waveform
+            current_top = offset_val + local_max
+        else:
+            # Original fixed offset approach
+            offset_val = idx * fixed_offset_distance
+            offset_data = [val + offset_val for val in scaled_data]
 
-        short_name = label[-4:].removeprefix('_').upper()  # "VGE", "VCE" ...
+        # (4) X-axis from start_i to end_i in 1 kHz steps
+        x_vals = [i / 1000.0 for i in range(start_i, end_i)]
+
+        short_name = label[-4:].removeprefix('_').upper()
         if short_name == 'POW1':
             legend_str = f"{short_name} (1 div = {scale_map['POW1'][0]/1000.0} {scale_map['POW1'][1]})"
         else:
@@ -157,10 +164,10 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
                              linewidth=1.0, label=legend_str)
         line_objs.append(line_obj)
 
-        # offset 라벨 표시
+        # Label text near the start of each waveform
         plt.text(
-            x_vals[0],  # 구간의 첫 X값 근방
-            offset_val,
+            x_vals[0],
+            offset_data[0],
             short_name + '   ',
             va='center',
             ha='right',
@@ -168,27 +175,25 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
             color='k'
         )
 
-        local_max = max(offset_data) if offset_data else 0
-        if local_max > y_lim_top:
-            y_lim_top = local_max
+        local_data_max = max(offset_data) if offset_data else 0
+        if local_data_max > y_lim_top:
+            y_lim_top = local_data_max
 
-    # (4) X축 범위: [start_i/1000, end_i/1000] 
-    plt.xlim(start_i/1000.0, end_i/1000.0)
+    # (5) X-axis limits
+    plt.xlim(start_i / 1000.0, end_i / 1000.0)
 
-    # (5) Y축 범위 지정
+    # (6) Y-axis range
+    # Include some margin on the top for labels
     plt.ylim(-2, y_lim_top + 1.0)
     y_ticks = np.arange(-2, y_lim_top + 2.0, 1.0)
     plt.yticks(y_ticks)
     plt.tick_params(axis='y', labelleft=False)
 
-    # (6) X축 눈금(major=5, minor=1) 설정
+    # (7) X-axis tick settings
     ax = plt.gca()
-    major_step = 5.0
-    minor_step = 1.0
-    ax.xaxis.set_major_locator(MultipleLocator(major_step))
-    ax.xaxis.set_minor_locator(MultipleLocator(minor_step))
+    ax.xaxis.set_major_locator(MultipleLocator(5.0))   # major = 5
+    ax.xaxis.set_minor_locator(MultipleLocator(1.0))   # minor = 1
 
-    # (7) X축 레이블: 예) "0 us", "5 us" ...
     ax.xaxis.set_major_formatter(lambda val, pos: f"{int(val)} us")
 
     ax.grid(True, which='major', axis='both', linestyle='--', linewidth=0.5)
@@ -283,3 +288,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
