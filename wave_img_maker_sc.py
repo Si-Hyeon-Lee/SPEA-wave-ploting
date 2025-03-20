@@ -47,8 +47,22 @@ def get_img_name(dir_path:str,is_high_side:bool):
     }
     
     dirs=dir_path.split('\\')
-    bacord = dirs[3].split('_')[3]
+    bacord = dirs[4].split('_')[3]
+    '''
+    C:\
+        !FAIL_WFM\
+            AC_HK3A_OSAT_V00\
+                20250318_143933\
+                    TEST_LOT_ID_378001X000JR590181_20250318_143933\
+                        AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
 
+
+    C:\
+        !FAIL_WFM - original_0317\
+            HK3_ACH_rev000\
+                TEST_LOT_ID_378000E130PS2C0012_AB2507030012_20250305_155743\
+                    AC_L7_600V_408A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
+    '''
     tmp = dirs[4].split('_')
     k = (
         dirs[2].split('_')[0],
@@ -56,7 +70,6 @@ def get_img_name(dir_path:str,is_high_side:bool):
         float(tmp[6].removesuffix('ohm')),
         float(tmp[7].removesuffix('ohm'))
     )
-
     if '_SC' in dir_path: 
         test_type = 'SC' 
     else :
