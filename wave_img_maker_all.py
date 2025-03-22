@@ -58,7 +58,10 @@ def get_img_name(dir_path:str,is_high_side:bool):
 
     # Find HK
     tmp = dirs[4].split('_')
-    k = (dirs[2].split('_')[0] ,tmp[3],float(tmp[6].removesuffix('ohm')),float(tmp[7].removesuffix('ohm')) )
+    k = (dirs[2].split('_')[0],
+        tmp[3],float(tmp[6].removesuffix('ohm')),
+        float(tmp[7].removesuffix('ohm')) 
+    )
     print(k)
 
     if '_SC' in dir_path: 
