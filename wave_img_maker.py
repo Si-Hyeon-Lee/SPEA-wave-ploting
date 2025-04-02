@@ -48,21 +48,6 @@ def get_img_name(dir_path:str,is_high_side:bool):
     
     dirs=dir_path.split('\\')
     bacord = dirs[4].split('_')[3]
-    '''
-    C:\  0
-        !FAIL_WFM\ 1
-            AC_HK3A_OSAT_V00\ 2 
-                20250318_143933\ 3 
-                    TEST_LOT_ID_378001X000JR590181_20250318_143933\  4 
-                        AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm 5
-
-    C:\ 0
-        !FAIL_WFM\ 1
-            AC_HK3A_OSAT_V00\ 2
-                20250318_143933\ 3 
-                    TEST_LOT_ID_378001X000JR590181_20250318_143933\ 4
-                        AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm 5
-    '''
     tmp = dirs[5].split('_')
     k = (
         dirs[2].split('_')[1].strip(),
@@ -101,6 +86,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
         'ICE': (200.0, 'A'),       # 200 A / div
         'POW1': (100000.0, 'kW')   # 100 kW / div (100000 = 100k in raw scale)
     }
+    if '_SC' in title: scale_map['POW1'] = (500000.0, 'kW') # Request from Client.
 
     plt.figure(figsize=(16, 8))
     plt.title(title)
@@ -129,7 +115,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
     line_objs = []
 
     for idx, label in enumerate(labels):
-        raw_data = data_dict[label][1:]  # Drop first value
+        raw_data = data_dict[label][1:]  # Drop first value which is Length of data.
         if not raw_data:
             print(f"[Warning] No '{label}' data in {output_path} folder.")
             continue
@@ -247,12 +233,12 @@ def process_directory(dir_path):
         full_path = os.path.join(dir_path, hf)
         label = hf.replace(".txt", "")
         data_dict_h[label] = load_txt_file(full_path)
-
-    output_h = os.path.join(dir_path, get_img_name(dir_path=dir_path, is_high_side=True))
+    plt_name_h = get_img_name(dir_path=dir_path, is_high_side=True)
+    output_h = os.path.join(dir_path, plt_name_h)
     plot_and_save_offset(
         data_dict_h, 
         output_h, 
-        title=f"{plt_name}_High_Side", 
+        title=plt_name_h, 
         line_color='red',
         is_sc=is_sc
     )
@@ -265,12 +251,12 @@ def process_directory(dir_path):
         full_path = os.path.join(dir_path, lf)
         label = lf.replace(".txt", "")
         data_dict_l[label] = load_txt_file(full_path)
-
-    output_l = os.path.join(dir_path, get_img_name(dir_path=dir_path, is_high_side=False))
+    plt_name_l = get_img_name(dir_path=dir_path, is_high_side=False)
+    output_l = os.path.join(dir_path, plt_name_l)
     plot_and_save_offset(
         data_dict_l, 
         output_l, 
-        title=f"{plt_name}_Low_Side", 
+        title=plt_name_l, 
         line_color='blue',
         is_sc=is_sc
     )
@@ -292,7 +278,7 @@ def main():
     print(f"[INFO] Observing Folder : {watch_path}")
     try:
         while True:
-            time.sleep(1)
+            time.sleep(2)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
