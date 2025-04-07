@@ -27,28 +27,51 @@ def load_txt_file(txt_path):
     return data
 
 def get_img_name(dir_path:str,is_high_side:bool):
-    '''
-    Parsing dir_name for get img file name.
-    '''
+    #FOR JINCHEON MOBIS.
     test_item = {
-        ('HK3','400A','000.50','000.50') : 'SW',
-        ('HK3','408A','000.50','000.50') : 'SW',
-        ('HK3','780A','000.50','006.00') : 'RBSOA1',
-        ('HK3','1000A','000.50','006.00') : 'RBSOA2',
+        ('HK3', '400A', '000.50', '000.50'): 'SW1',
+        ('HK3', '780A', '000.50', '006.00'): 'RBSOA1',
 
-        ('HK3A','400A','000.50','000.50') : 'SW',
-        ('HK3A','408A','000.50','000.50') : 'SW',
-        ('HK3A','780A','000.50','006.00') : 'RBSOA1',
-        ('HK3A','1000A','000.50','006.00') : 'RBSOA2',
+        ('HK3A', '400A', '000.50', '000.50'): 'SW1',
+        ('HK3A', '780A', '000.50', '006.00'): 'RBSOA1',
+        
+        ('HK5', '200A', '000.50', '000.50'): 'SW1',
+        ('HK5', '390A', '000.50', '006.00'): 'RBSOA1',
+        
+        ('HK7', '800A', '000.50', '020.00'): 'SW1',
+        ('HK7', '1040A', '000.50', '027.00'): 'RBSOA1',
+        ('HK7', '800A', '000.50', '027.00'): 'Enhanced SW',
+        ('HK7', '1040A', '000.50', '027.00'): 'SW2',
+        
+        ('HK4', '400A', '000.50', '000.50'): 'SW1',
+        ('HK4', '700A', '000.50', '027.00'): 'RBSOA1',
+        ('HK4', '400A', '000.50', '035.00'): 'Enhanced SW',
+        ('HK4', '400A', '000.50', '000.50'): 'SW2',
+        ('HK4', '200A', '000.50', '000.50'): 'SW1',
+        ('HK4', '200A', '000.50', '010.00'): 'RBSOA1',
 
-        ('HK5','200A','000.50','000.50') : 'SW',
-        ('HK5','390A','000.50','006.00') : 'RBSOA1',
-        ('HK5','500A','000.50','006.00') : 'RBSOA2',
+        ('HK6', '550A', '000.50', '010.00'): 'SW1',
+        ('HK6', '1000A', '000.50', '031.00'): 'RBSOA1',
+        ('HK6', '550A', '000.50', '031.00'): 'Enhanced SW',
+        ('HK6', '550A', '000.50', '010.00'): 'SW2',
+        ('HK6', '200A', '000.50', '005.00'): 'SW1',
+        ('HK6', '400A', '000.50', '010.00'): 'RBSOA1',
+
+        ('HK51B','585A','004.00','024.00'): 'RBSOA'
+
     }
+
+    '''
+    C:
+    \!FAIL_WFM
+    \AC_HK51B_hot_V12_ngd
+    \바코드_low바코드_날짜_시간.
+    \AC_L9_850V_585A_+15.0V_-05.0V_004.00ohm_024.00ohm_001.00ohm
+    '''
     
     dirs=dir_path.split('\\')
-    bacord = dirs[4].split('_')[3]
-    tmp = dirs[5].split('_')
+    bacord = dirs[3].split('_')[0]
+    tmp = dirs[4].split('_')
     k = (
         dirs[2].split('_')[1].strip(),
         tmp[3].strip(),
@@ -84,10 +107,12 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
         'VGE': (10.0, 'V'),        # 10 V / div
         'VCE': (200.0, 'V'),       # 200 V / div
         'ICE': (200.0, 'A'),       # 200 A / div
-        'POW1': (100000.0, 'kW')   # 100 kW / div (100000 = 100k in raw scale)
+        'VCE2': (200.0, 'V')    
     }
-    if '_SC' in title: scale_map['POW1'] = (500000.0, 'kW') # Request from Client.
+    if is_sc : 
+        scale_map.pop('VCE2')
 
+    
     plt.figure(figsize=(16, 8))
     plt.title(title)
 
@@ -152,10 +177,7 @@ def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=
         x_vals = [i / 1000.0 for i in range(start_i, end_i)]
 
         short_name = label[-4:].removeprefix('_').upper()
-        if short_name == 'POW1':
-            legend_str = f"{short_name} (1 div = {scale_map['POW1'][0]/1000.0} {scale_map['POW1'][1]})"
-        else:
-            legend_str = f"{short_name} (1 div = {unit_per_div})"
+        legend_str = f"{short_name} (1 div = {unit_per_div})"
 
         line_obj, = plt.plot(x_vals, offset_data, color=line_color,
                              linewidth=1.0, label=legend_str)
@@ -227,7 +249,7 @@ def process_directory(dir_path):
     is_sc = ('_SC' in dir_path)
 
     # High Side
-    h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt","IGBT1_HS_POW1.txt"]
+    h_files = ['DIODE1_XH_VCE2.txt','IGBT1_XH_ICE.txt','IGBT1_XH_VCE.txt','IGBT1_XH_VGE.txt']
     h_files.reverse()
     data_dict_h = {}
     for hf in h_files:
@@ -245,7 +267,7 @@ def process_directory(dir_path):
     )
 
     # Low Side
-    l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt","IGBT2_LS_POW1.txt"]
+    l_files = ['DIODE2_XL_VCE2.txt','IGBT2_XL_ICE.txt','IGBT2_XL_VCE.txt','IGBT2_XL_VGE.txt']
     l_files.reverse()
     data_dict_l = {}
     for lf in l_files:
