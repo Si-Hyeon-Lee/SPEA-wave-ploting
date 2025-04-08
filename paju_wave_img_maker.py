@@ -45,16 +45,24 @@ def get_img_name(dir_path:str,is_high_side:bool):
         ('HK5','390A','000.50','006.00') : 'RBSOA1',
         ('HK5','500A','000.50','006.00') : 'RBSOA2',
     }
-    
+    # C:\
+    # !FAIL_WFM\
+    # HK3A_ACH_rev000\
+    # TEST_LOT_ID_378001X000PS410208_DB2514010208_20250408_162236
+    # \AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
+
     dirs=dir_path.split('\\')
-    bacord = dirs[4].split('_')[3]
-    tmp = dirs[5].split('_')
-    k = (
-        dirs[2].split('_')[1].strip(),
-        tmp[3].strip(),
-        tmp[6].removesuffix('ohm').strip(),
-        tmp[7].removesuffix('ohm').strip()
-    )
+    bacord = dirs[3].split('_')[3]
+    tmp = dirs[4].split('_')
+    # find HK
+    if 'AC' in dirs[2].split('_')[0].strip(): device_key = dirs[2].split('_')[1].strip() 
+    else : device_key = dirs[2].split('_')[0]
+    # find A
+    current_key = tmp[3].strip() # find A
+    # find R1
+    r1_key,r2_key = tmp[6].removesuffix('ohm').strip() , tmp[7].removesuffix('ohm').strip()
+    
+    k = (device_key,current_key,r1_key,r2_key)
     
     if '_SC' in dir_path: 
         test_type = 'SC' 
