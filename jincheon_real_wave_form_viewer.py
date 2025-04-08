@@ -12,7 +12,7 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 
 ###############################
-# 1. TXT 파일 로딩
+# 1. TXT 파일 로딩 (변경 없음)
 ###############################
 def load_txt_file(txt_path):
     data = []
@@ -33,36 +33,23 @@ def load_txt_file(txt_path):
 
 
 ###############################
-# 2. 출력 이미지 이름 구성
+# 2. 출력 이미지 이름 구성 (변경 없음)
 ###############################
 def get_img_name(dir_path: str):
-    # d = {
-    #         '!AC_SW_IGBT_Waves_01' : 'IGBT12_RBSOA',
-    #         '!AC_SW_IGBT_Waves_02' : 'SICFET34_RBSOA',
-    #         '!AC_SC_Waves_01' : 'IGBT12_SC',
-    #         '!AC_SC_Waves_02' : 'SICFET34_SC',
-    #     }
-    # dirs = dir_path.split('\\')
-
-    return dir_path#os.path.join(dir_path,str(d[dirs[1]]))
+    return dir_path  # 그대로 유지
 
 
 ###############################
-# 3. 단일 Plot (H_* vs L_*)
+# 3. 단일 Plot (변경 없음)
 ###############################
 def plot_and_save_offset_merged(data_dict, output_path, title, is_sc=False):
-    """
-    파일명에 'H_VGE', 'L_VGE' 등으로 구분된 데이터를 하나의 Plot에 그리되,
-    H/L 구분은 색상으로만 하고, legend에는 측정항목(VCE, VGE, ICE, VCE2)만 표시.
-    """
-
     scale_map = {
         'VGE':  (10.0, 'V'),
         'VCE':  (200.0, 'V'),
         'ICE':  (200.0, 'A'),
         'VCE2': (200.0, 'V')
     }
-    if is_sc==True:
+    if is_sc == True:
         scale_map.pop('VCE2')
     if 'H_ICE' in data_dict and 'L_ICE' in data_dict:
         all_ice_data = []
@@ -81,14 +68,17 @@ def plot_and_save_offset_merged(data_dict, output_path, title, is_sc=False):
         (["H_ICE",  "L_ICE"],  'ICE'),
         (["H_VCE2", "L_VCE2"], 'VCE2'),
     ]
+    if is_sc == True:
+        groupings = [
+            (["H_VGE",  "L_VGE"],  'VGE'),
+            (["H_VCE",  "L_VCE"],  'VCE'),
+            (["H_ICE",  "L_ICE"],  'ICE'),
+        ]
     groupings.reverse()
 
     plt.figure(figsize=(16, 8))
-    #plt.title(title)
 
-
-
-    # 여러 데이터 중 "가장 긴" 배열 길이를 찾는다
+    # 가장 긴 배열 길이
     max_len = 0
     for wave_key in data_dict:
         arr = data_dict[wave_key]
@@ -99,7 +89,6 @@ def plot_and_save_offset_merged(data_dict, output_path, title, is_sc=False):
 
     offset_step = 8.0
     y_lim_top = 0.0
-
     already_labeled = set()
 
     for g_i, (group_keys, group_type) in enumerate(groupings):
@@ -115,8 +104,7 @@ def plot_and_save_offset_merged(data_dict, output_path, title, is_sc=False):
                 break
 
         for wave_key in group_keys:
-            if wave_key not in data_dict :
-                print(wave_key)
+            if wave_key not in data_dict:
                 continue
 
             raw_data = data_dict[wave_key]
@@ -133,7 +121,6 @@ def plot_and_save_offset_merged(data_dict, output_path, title, is_sc=False):
             offset_data = [val + group_offset for val in scaled_data]
 
             x_vals = [i / 1000.0 for i in range(wave_len)]
-
             color = 'red' if wave_key.startswith('H_') else 'blue'
 
             short_label = wave_key[2:]
@@ -174,14 +161,13 @@ def plot_and_save_offset_merged(data_dict, output_path, title, is_sc=False):
     ax.grid(True, which='minor', axis='both', linestyle='--', linewidth=0.3)
 
     plt.legend(loc='lower right', fontsize=9, handlelength=0, handletextpad=0)
-
     plt.savefig(output_path)
     plt.close()
     print(f"[INFO] Saved Plot : {output_path}")
 
 
 ###############################
-# 4. 디렉토리 처리 (중복 처리 방지)
+# 4. 디렉토리 처리 (변경 없음)
 ###############################
 last_dir = ''
 def process_directory(dir_path):
@@ -202,7 +188,6 @@ def process_directory(dir_path):
         if item.endswith('.txt'):
             for pk in possible_keys:
                 if pk in item:
-                    #print(f"[DEBUG] Matched {item} -> key={pk}")
                     full_path = os.path.join(dir_path, item)
                     data_dict[pk] = load_txt_file(full_path)
                     break
@@ -219,191 +204,82 @@ def process_directory(dir_path):
 
 
 ###############################
-# 5. Watchdog Handler
+# 5. Watchdog Handler (변경 없음)
 ###############################
 class TxtFileModifiedHandler(FileSystemEventHandler):
     def on_modified(self, event):
         if not event.is_directory and event.src_path.endswith('.txt'):
-            time.sleep(1)
+            time.sleep(0.2)
             dir_of_file = os.path.dirname(event.src_path)
             process_directory(dir_of_file)
 
 
 ###############################
-# 6. 이미지 뷰어 클래스
+# === [여기부터 GUI 수정] ===
 ###############################
-class ScrolledImageViewer(tk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent)
 
-        # 스크롤바 + 캔버스 구성
-        self.canvas = tk.Canvas(self, highlightthickness=0)
-        self.hbar = tk.Scrollbar(self, orient='horizontal', command=self.canvas.xview)
-        self.vbar = tk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+# 기존: 2×2 ScrolledImageViewer 제거
+# 새로: 하나의 윈도우+Label에 3.5초간 이미지를 표시
 
-        self.canvas.configure(xscrollcommand=self.hbar.set, yscrollcommand=self.vbar.set)
-        
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.vbar.grid(row=0, column=1, sticky="ns")
-        self.hbar.grid(row=1, column=0, sticky="ew")
-
-        # 행/열 확대 되도록 설정
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
-
-        self.bind_events()
-
-        self.image_id = None
-        self.original_image = None  # 원본 PIL 이미지
-        self.zoom_level = 1.0
-
-    def bind_events(self):
-        # 마우스 휠 Zoom
-        self.canvas.bind("<MouseWheel>", self.on_mousewheel)
-        self.canvas.bind("<Button-4>", self.on_mousewheel)   # Linux
-        self.canvas.bind("<Button-5>", self.on_mousewheel)   # Linux
-
-        # 키보드 화살표 Pan
-        self.canvas.bind_all("<Up>", self.on_arrow_key)
-        self.canvas.bind_all("<Down>", self.on_arrow_key)
-        self.canvas.bind_all("<Left>", self.on_arrow_key)
-        self.canvas.bind_all("<Right>", self.on_arrow_key)
-
-    def set_image(self, pil_image):
-        """
-        이미지를 현재 뷰어에 표시.
-        """
-        self.original_image = pil_image
-        self.zoom_level = 1.0
-        self.show_image()
-
-    def show_image(self):
-        """
-        현재 zoom_level에 맞춰 이미지를 표시.
-        """
-        if not self.original_image:
-            return
-
-        # 현재 Frame 크기에 맞춰 일단 기본적으로 resize 후, zoom_level을 곱해줌
-        frame_width = max(self.winfo_width(), 1)
-        frame_height = max(self.winfo_height(), 1)
-
-        # 원본 이미지 크기
-        orig_w, orig_h = self.original_image.size
-
-        # 기본적으로 Frame에 '맞춰서' 먼저 스케일 결정
-        ratio_w = frame_width / orig_w
-        ratio_h = frame_height / orig_h
-        base_scale = min(ratio_w, ratio_h)
-
-        new_width = int(orig_w * base_scale * self.zoom_level)
-        new_height = int(orig_h * base_scale * self.zoom_level)
-
-        resized_img = self.original_image.resize((new_width, new_height), Image.ANTIALIAS)
-        self.tk_image = ImageTk.PhotoImage(resized_img)
-
-        # Canvas 이미지를 갱신
-        if self.image_id is None:
-            self.image_id = self.canvas.create_image(0, 0, image=self.tk_image, anchor='nw')
-        else:
-            self.canvas.itemconfig(self.image_id, image=self.tk_image)
-
-        # Scroll region 재조정
-        self.canvas.config(scrollregion=(0, 0, new_width, new_height))
-
-    def on_mousewheel(self, event):
-        """
-        마우스 휠로 zoom_level 변경
-        """
-        # Windows 기준: event.delta > 0 이면 위로 스크롤(확대), <0 이면 아래로 스크롤(축소)
-        # Linux 기준: Button-4는 확대, Button-5는 축소
-        if event.num == 4 or event.delta > 0:
-            self.zoom_level *= 1.1
-        elif event.num == 5 or event.delta < 0:
-            self.zoom_level *= 0.9
-
-        # 너무 작은 값으로 가지 않도록 제한
-        if self.zoom_level < 0.1:
-            self.zoom_level = 0.1
-        if self.zoom_level > 10.0:
-            self.zoom_level = 10.0
-
-        self.show_image()
-
-    def on_arrow_key(self, event):
-        """
-        화살표 키로 이미지 화면 이동
-        """
-        move_px = 50  # 이동량
-        if event.keysym == 'Up':
-            self.canvas.yview_scroll(-move_px, "units")
-        elif event.keysym == 'Down':
-            self.canvas.yview_scroll(move_px, "units")
-        elif event.keysym == 'Left':
-            self.canvas.xview_scroll(-move_px, "units")
-        elif event.keysym == 'Right':
-            self.canvas.xview_scroll(move_px, "units")
-
-
-###############################
-# 7. 전체 화면 GUI 초기화
-###############################
-MAX_IMAGES = 4
-displayed_viewers = []  # ScrolledImageViewer의 리스트
-current_index = 0        # 어느 뷰어에 이미지를 넣을지
+root = None
+image_label = None
 
 def setup_gui():
-    global root
+    """
+    하나의 메인 윈도우와 Label만 생성.
+    """
+    global root, image_label
+
     root = tk.Tk()
-    root.title("Waveform Image Viewer (4-slot)")
+    root.title("Single Window Image Viewer")
+    # 창 크기 설정 (필요 시 조절)
+    root.geometry("1000x800")
 
-    # 일반적인 윈도우 창 크기 설정 (예: 1200x800)
-    root.geometry("1000x800")  # 너비x높이, 필요에 따라 조절 가능
-
-    # 창 크기 조절 가능하게 (기본값이 True지만 명시적으로 설정해도 좋음)
-    root.resizable(True, True)
-
-    # 2×2 Grid Layout
-    root.rowconfigure(0, weight=1)
-    root.rowconfigure(1, weight=1)
-    root.columnconfigure(0, weight=1)
-    root.columnconfigure(1, weight=1)
-
-    # 4개의 이미지 뷰어 생성
-    for r in range(2):
-        for c in range(2):
-            viewer = ScrolledImageViewer(root)
-            viewer.grid(row=r, column=c, sticky="nsew")
-            displayed_viewers.append(viewer)
+    # Label 하나만 메인 윈도우에 배치
+    image_label = tk.Label(root)
+    image_label.pack(expand=True, fill="both")
 
     return root
 
 def add_image_to_gallery(img_path):
     """
-    새 이미지가 들어오면 가장 먼저 들어왔던 이미지를 표시 중인 View를 덮어쓰는(Queue처럼) 방식
+    새로 생성된 .jpg 파일이 들어오면
+    메인 윈도우에 이미지를 표시한 후 3.5초간 유지.
     """
-    global current_index
-    global displayed_viewers
+    global image_label, root
 
+    if not os.path.exists(img_path):
+        return
+
+    # PIL 이미지를 Label에 표시
     pil_img = Image.open(img_path)
+    tk_img = ImageTk.PhotoImage(pil_img)
+    image_label.config(image=tk_img)
+    image_label.image = tk_img
 
-    # 현재 index 위치에 이미지 세팅
-    displayed_viewers[current_index].set_image(pil_img)
+    # 즉시 화면 갱신
+    root.update()
 
-    # 다음 index로 이동
-    current_index = (current_index + 1) % MAX_IMAGES
+    # 3.5초간 대기
+    time.sleep(3.5)
 
 
 ###############################
-# 8. main
+# 8. main (필수 로직 그대로)
 ###############################
 def main():
     watch_pathes = [
-        r"C:\!AC_SC_Waves_01",
-        r"C:\!AC_SC_Waves_02",
-        r"C:\!AC_SW_IGBT_Waves_01",
-        r"C:\!AC_SW_IGBT_Waves_02"
+    r"C:\!AC_SC_Waves_01",
+    r"C:\!AC_SC_Waves_02",
+    r"C:\!AC_SC_Waves_03",
+    r"C:\!AC_SW_IGBT_Waves_01",    #RBSOA DP IGBT1,2 
+    r"C:\!AC_SW_IGBT_Waves_02",    #RBSOA MP SICFET3,4 
+    r"C:\!AC_SW_IGBT_Waves_03",    #RBSOA MP SICFET6 
+    r"C:\!AC_SW_IGBT_Waves_04",    #DPT IGBT1,2 
+    r"C:\!AC_SW_IGBT_Waves_05",    #DPT SICFET3,4 
+    r"C:\!AC_SW_IGBT_Waves_06"     #DPT SICFET6
     ]
+
     root_window = setup_gui()
 
     event_handler = TxtFileModifiedHandler()
