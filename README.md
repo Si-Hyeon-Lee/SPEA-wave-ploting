@@ -1,6 +1,6 @@
 # Semiconductor Defect Waveform Plotter
 
-> **Purpose** : Automatically detect, parse, and visualize electrical waveforms (VGE, VCE, ICE, POW) recorded during power‐semiconductor testing when a device is classified as **FAIL**.
+> **Purpose** : Automatically detect, parse, and visualize electrical waveforms (VGE, VCE, ICE, POW) recorded during semiconductor testing company 'SPEA (https://www.spea.com/en/)' when a device is classified as **FAIL**.
 
 ---
 
@@ -15,8 +15,11 @@ Although the code targets an industrial environment, it is intentionally lightwe
 ---
 
 ## 🖼️ Result Image example.
-WIP
+|FILE NAME|**378001X000JR590181_AC_RBSOA1_Low_Side**|
+|---------|---------|
+|**Plot Image**|![378001X000JR590181_AC_RBSOA1_Low_Side](https://github.com/user-attachments/assets/28375622-e7a0-4d96-80f2-d77b8df6b58b)|
 
+---
 ## ✨ Key Features
 
 | Feature | Description |
@@ -34,10 +37,10 @@ WIP
 
 1. **Folder Detection** – `Observer` triggers `NewDirectoryHandler.on_created` whenever a new directory appears.
 2. **Debounce** – The handler waits 3 seconds to ensure all text files are fully written.
-3. **DFS Search** – `process_directory()` recursively scans sub‑folders until it finds a set of waveform files.
-4. **Data Loading** – `load_txt_file()` converts each line to `float`, ignoring malformed rows.
-5. **Plot Naming** – `get_img_name()` parses the directory structure, looks up the test type, and returns a barcode‑based JPEG filename.
-6. **Plotting** – `plot_and_save_offset()`
+3. **DFS Search** – Recursively scans sub‑folders until it finds a set of waveform files.
+4. **Data Loading** – Preprocess each data.(Min-Max Scaling) 
+5. **Plot Naming** – Parses the directory structure, looks up the test type, and returns a barcode‑based JPEG filename.
+6. **Plotting** – 
    - Normalises each channel according to `scale_map`.
    - Applies either **fixed** (8 div) or **dynamic** offsets.
    - Adds legends and unit annotations.
@@ -48,7 +51,8 @@ WIP
 
 ## 📄 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+**All programs, source codes, and input output data belong to the SPEA company's assets.**
+Distributed under the **MIT License**. 
 
 ---
 
