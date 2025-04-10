@@ -23,7 +23,7 @@ WIP
 |---------|-------------|
 | **Real‑time monitoring** | Uses `watchdog.Observer` to detect freshly created test folders without polling. |
 | **Recursive discovery** | Performs a depth‑first search to locate any directory that contains the expected `*.txt` waveform files. |
-| **Automated plot naming** | Derives a descriptive JPEG filename (`<BARCODE>_AC_<TEST>_<High|Low>_Side.jpg`) from the directory hierarchy. |
+| **Automated plot naming** | Derives a descriptive JPEG filename (`<BARCODE>_AC_<TEST>_<High or Low>_Side.jpg`) from the directory hierarchy. |
 | **Dynamic offset plotting** | When the folder name includes `_SC` (short‑circuit test), each waveform is vertically shifted just enough to avoid overlap, maximising readability. |
 | **Flexible scaling** | Physical units per division (e.g. 10 V/div, 200 A/div) are automatically annotated in the legend. |
 | **Zero external dependencies** | Requires only `numpy`, `matplotlib`, and `watchdog`. No proprietary libraries or test‑station software. |
