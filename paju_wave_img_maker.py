@@ -1,287 +1,216 @@
-import sys
-import os
-import time
-import numpy as np
+"""
+Wave‑plot watcher.
+Reads scale factors from `scale_map.json` that sits NEXT TO the EXE (or next to
+the .py file during normal interpretation).
+"""
+
+import sys, os, json, time, numpy as np
+from copy import deepcopy
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from matplotlib.ticker import MultipleLocator
 import matplotlib.pyplot as plt
 
-def load_txt_file(txt_path):
-    '''
-    Read text file which is given and return float vector data(=list)
-    '''
+# ────────────────────────────────────────────────────────────────────────────────
+# 1.  Where am I running from?
+#    • normal run  → directory of this .py file
+#    • frozen EXE  → directory of the launched executable
+#      (sys.frozen is set by PyInstaller)  :contentReference[oaicite:0]{index=0}
+# ────────────────────────────────────────────────────────────────────────────────
+def get_base_dir() -> str:
+    if getattr(sys, "frozen", False):               # PyInstaller
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = get_base_dir()
+JSON_PATH = os.path.join(BASE_DIR, "scale_map.json")
+
+# ────────────────────────────────────────────────────────────────────────────────
+def load_scale_map(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    return {k.upper(): (float(v[0]), str(v[1])) for k, v in raw.items()}
+
+SCALE_MAP = load_scale_map(JSON_PATH)
+
+
+def load_txt_file(txt_path: str):
+    """Read plain‑text numeric vector; ignore non‑numeric lines."""
     data = []
     if not os.path.exists(txt_path):
-        print('no txt file in load_txt_file func')
+        print(f"[WARN] {txt_path} not found")
         return data
-    with open(txt_path, 'r', encoding='utf-8') as f:
+    with open(txt_path, "r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if line:
-                try:
-                    value = float(line)
-                    data.append(value)
-                except ValueError:
-                    pass
+            try:
+                data.append(float(line.strip()))
+            except ValueError:
+                continue
     return data
 
-def get_img_name(dir_path:str,is_high_side:bool):
-    '''
-    Parsing dir_name for get img file name.
-    '''
+
+# ---------- naming helpers ---------------------------------------------------
+def get_img_name(dir_path: str, is_high_side: bool):
+    """Return descriptive JPEG name for a measurement folder."""
     test_item = {
-        ('HK3','400A','000.50','000.50') : 'SW',
-        ('HK3','408A','000.50','000.50') : 'SW',
-        ('HK3','780A','000.50','006.00') : 'RBSOA1',
-        ('HK3','1000A','000.50','006.00') : 'RBSOA2',
-
-        ('HK3A','400A','000.50','000.50') : 'SW',
-        ('HK3A','408A','000.50','000.50') : 'SW',
-        ('HK3A','780A','000.50','006.00') : 'RBSOA1',
-        ('HK3A','1000A','000.50','006.00') : 'RBSOA2',
-
-        ('HK5','200A','000.50','000.50') : 'SW',
-        ('HK5','390A','000.50','006.00') : 'RBSOA1',
-        ('HK5','500A','000.50','006.00') : 'RBSOA2',
+        ("HK3", "400A", "000.50", "000.50"): "SW",
+        ("HK3", "408A", "000.50", "000.50"): "SW",
+        ("HK3", "780A", "000.50", "006.00"): "RBSOA1",
+        ("HK3", "1000A", "000.50", "006.00"): "RBSOA2",
+        ("HK3A", "400A", "000.50", "000.50"): "SW",
+        ("HK3A", "408A", "000.50", "000.50"): "SW",
+        ("HK3A", "780A", "000.50", "006.00"): "RBSOA1",
+        ("HK3A", "1000A", "000.50", "006.00"): "RBSOA2",
+        ("HK5", "200A", "000.50", "000.50"): "SW",
+        ("HK5", "390A", "000.50", "006.00"): "RBSOA1",
+        ("HK5", "500A", "000.50", "006.00"): "RBSOA2",
     }
-    # C:\
-    # !FAIL_WFM\
-    # HK3A_ACH_rev000\
-    # TEST_LOT_ID_378001X000PS410208_DB2514010208_20250408_162236
-    # \AC_L7_600V_400A_+15.0V_-05.0V_000.50ohm_000.50ohm_000.00ohm
 
-    dirs=dir_path.split('\\')
-    bacord = dirs[3].split('_')[3]
-    tmp = dirs[4].split('_')
-    # find HK
-    if 'AC' in dirs[2].split('_')[0].strip(): device_key = dirs[2].split('_')[1].strip() 
-    else : device_key = dirs[2].split('_')[0]
-    # find A
-    current_key = tmp[3].strip() # find A
-    # find R1
-    r1_key,r2_key = tmp[6].removesuffix('ohm').strip() , tmp[7].removesuffix('ohm').strip()
-    
-    k = (device_key,current_key,r1_key,r2_key)
-    
-    if '_SC' in dir_path: 
-        test_type = 'SC' 
-    # elif k in test_item :
-    #     print(f'Found key : {k}')
-    #     test_type = test_item[k]
-    else:
-        test_type = test_item.get(k, "UNKNOWN_TEST")
-        if test_type == "UNKNOWN_TEST":
-            print(f'[Error] : No test item in dictionary \n Test_item key = {k} \n')
-    if is_high_side:
-        return f'{bacord}_AC_{test_type}_High_Side.jpg'
-    return f'{bacord}_AC_{test_type}_Low_Side.jpg'
-    
-def plot_and_save_offset(data_dict, output_path, title, line_color='red', is_sc=False):
-    """
-    Plot wave data and save to output_path with dynamic offset if 'is_sc' is True.
-    data_dict: { "IGBT1_HS_VGE": [...], "IGBT1_HS_VCE": [...], ... }
-    output_path: jpg file path, usually same as input data path.
-    title: Title of the graph, usually same as input data's folder.
-    line_color: HS -> 'red', LS -> 'blue'
-    is_sc: True if folder name contains '_SC'. Then waveforms are dynamically offset 
-           to avoid overlap.
-    """
+    parts = dir_path.split("\\")
+    bacord = parts[3].split("_")[3]
+    tmp = parts[4].split("_")
 
-    scale_map = {
-        'VGE': (10.0, 'V'),        # 10 V / div
-        'VCE': (200.0, 'V'),       # 200 V / div
-        'ICE': (200.0, 'A'),       # 200 A / div
-        'POW1': (100000.0, 'kW')   # 100 kW / div (100000 = 100k in raw scale)
-    }
-    if '_SC' in title: scale_map['POW1'] = (500000.0, 'kW') # Request from Client.
+    device_key = parts[2].split("_")[1] if "AC" in parts[2] else parts[2].split("_")[0]
+    current_key = tmp[3]
+    r1_key, r2_key = tmp[6].removesuffix("ohm"), tmp[7].removesuffix("ohm")
+
+    test_type = (
+        "SC"
+        if "_SC" in dir_path
+        else test_item.get((device_key, current_key, r1_key, r2_key), "UNKNOWN_TEST")
+    )
+    prefix = "High" if is_high_side else "Low"
+    return f"{bacord}_AC_{test_type}_{prefix}_Side.jpg"
+
+
+# ---------- plotting ---------------------------------------------------------
+def plot_and_save_offset(
+    data_dict: dict,
+    output_path: str,
+    title: str,
+    line_color: str,
+    is_sc: bool,
+    scale_map: dict,
+):
+    """Plot waveforms using scale_map; add dynamic offset when is_sc."""
+    local_scale = deepcopy(scale_map)  # prevent mutation
+    if is_sc and "POW1" in local_scale:
+        local_scale["POW1"] = (500000.0, "kW")
 
     plt.figure(figsize=(16, 8))
     plt.title(title)
 
     labels = list(data_dict.keys())
-    
-    # [1] Determine the plotting range based on whether it's SC or not
-    N_list = []
-    for lbl in labels:
-        N_list.append(len(data_dict[lbl]) - 1)  # Each array's first element is length info
-    max_len = max(N_list) if N_list else 0
 
-    if is_sc and max_len > 4:
-        start_i = int(max_len * 0.40)
-        end_i = int(max_len * 0.70)
-    else:
-        start_i = 0
-        end_i = max_len
+    # ---- determine time range ----
+    sample_lengths = [len(data_dict[lbl]) - 1 for lbl in labels if data_dict[lbl]]
+    max_len = max(sample_lengths) if sample_lengths else 0
+    start_i, end_i = (int(max_len * 0.40), int(max_len * 0.70)) if is_sc else (0, max_len)
 
-    # Prepare offset logic
-    # If '_SC' in directory => dynamic offset, else => fixed offset (8.0 increments)
-    fixed_offset_distance = 8.0
-    current_top = 0.0  # Tracks top of previously plotted waveform when using dynamic offsets
-
+    fixed_offset = 8.0
+    current_top = 0.0
     y_lim_top = 0.0
     line_objs = []
 
     for idx, label in enumerate(labels):
-        raw_data = data_dict[label][1:]  # Drop first value which is Length of data.
-        if not raw_data:
-            print(f"[Warning] No '{label}' data in {output_path} folder.")
+        raw = data_dict[label][1:]  # first element is length header
+        if not raw:
             continue
+        segment = raw[start_i:end_i]
 
-        partial_data = raw_data[start_i:end_i]
-
-        # (2) Determine scale factor based on label
-        scale_factor = 1.0
-        unit_per_div = '?'
-        for key in scale_map:
+        # ---- scaling ----
+        scale_factor, unit_per_div = 1.0, "?"
+        for key, (val_per_div, unit) in local_scale.items():
             if key in label.upper():
-                scale_factor = 1.0 / scale_map[key][0]
-                unit_per_div = f"{scale_map[key][0]} {scale_map[key][1]}"
+                scale_factor = 1.0 / val_per_div
+                unit_per_div = f"{val_per_div} {unit}"
                 break
+        scaled = [v * scale_factor for v in segment]
 
-        scaled_data = [val * scale_factor for val in partial_data]
-
-        # (3) Calculate dynamic or fixed offset
+        # ---- offset (dynamic for SC) ----
         if is_sc:
-            # For SC directories, dynamically compute offset to avoid overlap
-            local_min = min(scaled_data) if scaled_data else 0
-            local_max = max(scaled_data) if scaled_data else 0
-            # Shift so that local_min is slightly above current_top
-            offset_val = current_top - local_min + 1.0  # +1.0 margin
-            offset_data = [val + offset_val for val in scaled_data]
-            # Update current_top for the next waveform
-            current_top = offset_val + local_max
+            offset = current_top - min(scaled) + 1.0
+            current_top = offset + max(scaled)
         else:
-            # Original fixed offset approach
-            offset_val = idx * fixed_offset_distance
-            offset_data = [val + offset_val for val in scaled_data]
+            offset = idx * fixed_offset
+        shifted = [v + offset for v in scaled]
 
-        # (4) X-axis from start_i to end_i in 1 kHz steps
+        # ---- plot ----
         x_vals = [i / 1000.0 for i in range(start_i, end_i)]
-
-        short_name = label[-4:].removeprefix('_').upper()
-        if short_name == 'POW1':
-            legend_str = f"{short_name} (1 div = {scale_map['POW1'][0]/1000.0} {scale_map['POW1'][1]})"
-        else:
-            legend_str = f"{short_name} (1 div = {unit_per_div})"
-
-        line_obj, = plt.plot(x_vals, offset_data, color=line_color,
-                             linewidth=1.0, label=legend_str)
-        line_objs.append(line_obj)
-
-        # Label text near the start of each waveform
-        plt.text(
-            x_vals[0],
-            offset_data[0],
-            short_name + '   ',
-            va='center',
-            ha='right',
-            fontsize=9,
-            color='k'
+        short = label[-4:].lstrip("_").upper()
+        legend = (
+            f"{short} (1 div = {local_scale['POW1'][0]/1000.0} {local_scale['POW1'][1]})"
+            if short == "POW1"
+            else f"{short} (1 div = {unit_per_div})"
         )
 
-        local_data_max = max(offset_data) if offset_data else 0
-        if local_data_max > y_lim_top:
-            y_lim_top = local_data_max
+        (line_obj,) = plt.plot(x_vals, shifted, color=line_color, linewidth=1.0, label=legend)
+        line_objs.append(line_obj)
+        plt.text(x_vals[0], shifted[0], short + "   ", va="center", ha="right", fontsize=9)
 
-    # (5) X-axis limits
+        y_lim_top = max(y_lim_top, max(shifted))
+
+    # ---- axes cosmetics ----
     plt.xlim(start_i / 1000.0, end_i / 1000.0)
-
-    # (6) Y-axis range
-    # Include some margin on the top for labels
     plt.ylim(-2, y_lim_top + 1.0)
-    y_ticks = np.arange(-2, y_lim_top + 2.0, 1.0)
-    plt.yticks(y_ticks)
-    plt.tick_params(axis='y', labelleft=False)
+    plt.yticks(np.arange(-2, y_lim_top + 2.0, 1.0))
+    plt.tick_params(axis="y", labelleft=False)
 
-    # (7) X-axis tick settings
     ax = plt.gca()
-    ax.xaxis.set_major_locator(MultipleLocator(5.0))   # major = 5
-    ax.xaxis.set_minor_locator(MultipleLocator(1.0))   # minor = 1
-
-    ax.xaxis.set_major_formatter(lambda val, pos: f"{int(val)} us")
-
-    ax.grid(True, which='major', axis='both', linestyle='--', linewidth=0.5)
-    ax.grid(True, which='minor', axis='both', linestyle='--', linewidth=0.3)
+    ax.xaxis.set_major_locator(MultipleLocator(5.0))
+    ax.xaxis.set_minor_locator(MultipleLocator(1.0))
+    ax.xaxis.set_major_formatter(lambda val, _: f"{int(val)} us")
+    ax.grid(True, which="major", linestyle="--", linewidth=0.5)
+    ax.grid(True, which="minor", linestyle="--", linewidth=0.3)
 
     if line_objs:
-        plt.legend(handles=line_objs, loc='lower right', fontsize=9,
-                   handlelength=0, handletextpad=0)
+        plt.legend(handles=line_objs, loc="lower right", fontsize=9, handlelength=0, handletextpad=0)
 
     plt.savefig(output_path)
     plt.close()
     print(f"[INFO] Saved Plot : {output_path}")
 
-def process_directory(dir_path):
-    '''
-    DFS search. if dir_path contains txt file then start plotting.
-    '''
-    print(f"[*] process_directory: {dir_path}")
+
+# ---------- directory traversal ---------------------------------------------
+def process_directory(dir_path: str):
+    """Depth‑first search; when .txt present, generate plots."""
     sub_items = os.listdir(dir_path)
-    txt_files = [f for f in sub_items if f.endswith('.txt')]
+    txt_files = [f for f in sub_items if f.endswith(".txt")]
     if not txt_files:
         for item in sub_items:
             sub_path = os.path.join(dir_path, item)
             if os.path.isdir(sub_path):
                 process_directory(sub_path)
         return
-    
-    # FOUND TXT
-    dir_name = os.path.basename(dir_path)
-    plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
-    
-    # _SC 포함 여부 판별
-    is_sc = ('_SC' in dir_path)
 
-    # High Side
-    h_files = ["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt","IGBT1_HS_POW1.txt"]
-    h_files.reverse()
-    data_dict_h = {}
-    for hf in h_files:
-        full_path = os.path.join(dir_path, hf)
-        label = hf.replace(".txt", "")
-        data_dict_h[label] = load_txt_file(full_path)
-    plt_name_h = get_img_name(dir_path=dir_path, is_high_side=True)
-    output_h = os.path.join(dir_path, plt_name_h)
-    plot_and_save_offset(
-        data_dict_h, 
-        output_h, 
-        title=plt_name_h, 
-        line_color='red',
-        is_sc=is_sc
-    )
+    is_sc = "_SC" in dir_path
+    # ---- High side ----
+    h_files = list(reversed(["IGBT1_HS_VGE.txt", "IGBT1_HS_VCE.txt", "IGBT1_HS_ICE.txt", "IGBT1_HS_POW1.txt"]))
+    data_h = {f[:-4]: load_txt_file(os.path.join(dir_path, f)) for f in h_files}
+    out_h = os.path.join(dir_path, get_img_name(dir_path, True))
+    plot_and_save_offset(data_h, out_h, os.path.basename(out_h), "red", is_sc, SCALE_MAP)
 
-    # Low Side
-    l_files = ["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt","IGBT2_LS_POW1.txt"]
-    l_files.reverse()
-    data_dict_l = {}
-    for lf in l_files:
-        full_path = os.path.join(dir_path, lf)
-        label = lf.replace(".txt", "")
-        data_dict_l[label] = load_txt_file(full_path)
-    plt_name_l = get_img_name(dir_path=dir_path, is_high_side=False)
-    output_l = os.path.join(dir_path, plt_name_l)
-    plot_and_save_offset(
-        data_dict_l, 
-        output_l, 
-        title=plt_name_l, 
-        line_color='blue',
-        is_sc=is_sc
-    )
+    # ---- Low side ----
+    l_files = list(reversed(["IGBT2_LS_VGE.txt", "IGBT2_LS_VCE.txt", "IGBT2_LS_ICE.txt", "IGBT2_LS_POW1.txt"]))
+    data_l = {f[:-4]: load_txt_file(os.path.join(dir_path, f)) for f in l_files}
+    out_l = os.path.join(dir_path, get_img_name(dir_path, False))
+    plot_and_save_offset(data_l, out_l, os.path.basename(out_l), "blue", is_sc, SCALE_MAP)
 
+
+# ---------- watchdog handler -------------------------------------------------
 class NewDirectoryHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
-            new_dir_path = event.src_path
-            print(f"[INFO] New Folder Detected : {new_dir_path} .")
+            print(f"[INFO] New Folder Detected : {event.src_path}")
             time.sleep(3)
-            process_directory(new_dir_path)
+            process_directory(event.src_path)
 
+
+# ---------- main -------------------------------------------------------------
 def main():
     watch_path = r"C:\!FAIL_WFM"
-    event_handler = NewDirectoryHandler()
     observer = Observer()
-    observer.schedule(event_handler, watch_path, recursive=True)
+    observer.schedule(NewDirectoryHandler(), watch_path, recursive=True)
     observer.start()
     print(f"[INFO] Observing Folder : {watch_path}")
     try:
@@ -291,6 +220,6 @@ def main():
         observer.stop()
     observer.join()
 
+
 if __name__ == "__main__":
     main()
-

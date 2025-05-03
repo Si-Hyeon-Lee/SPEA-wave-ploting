@@ -57,7 +57,13 @@ def get_img_name(dir_path:str,is_high_side:bool):
         ('HK6', '200A', '000.50', '005.00'): 'SW1',
         ('HK6', '400A', '000.50', '010.00'): 'RBSOA1',
 
-        ('HK51B','585A','004.00','024.00'): 'RBSOA'
+        ('HK51B','585A','004.00','024.00'): 'RBSOA',
+        ('HK51B','350A','004.00','011.00'): 'SW',
+        ('HK51B','700A','002.00','002.00'): 'RBSOA',
+        ('HK51B','350A','002.00','002.00'): 'SW',
+        ('HK51B','350A','002.00','010.00'): 'RBSOA',
+        ('HK51B','350A','002.00','010.00'): 'RBSOA',
+        ('HK51B','175A','002.00','002.00'): 'SW',
 
     }
 
@@ -240,7 +246,27 @@ def process_directory(dir_path):
             if os.path.isdir(sub_path):
                 process_directory(sub_path)
         return
-    
+    def get_files(dir_path, is_high):
+        # 기준이 되는 문자열 목록
+        target_keywords = ['H_VCE2.txt', 'H_ICE.txt', 'H_VCE.txt', 'H_VGE.txt'] if is_high else \
+                        ['L_VCE2.txt', 'L_ICE.txt', 'L_VCE.txt', 'L_VGE.txt']
+
+        if not os.path.isdir(dir_path):
+            print(f'[Warning] Invalid directory: {dir_path}')
+            return ['']
+
+        all_files = os.listdir(dir_path)
+        
+        # 특정 키워드를 포함한 파일명 필터링
+        matching_files = [f for f in all_files if any(keyword in f for keyword in target_keywords)]
+        
+        matching_files.sort(reverse=True)  # 기존처럼 reverse 정렬
+
+        if not matching_files:
+            print(f'[Warning] No matching files in: {dir_path}')
+            return ['']
+
+        return matching_files
     # FOUND TXT
     dir_name = os.path.basename(dir_path)
     plt_name = dir_name[:dir_name.find("A_")+1] if "A_" in dir_name else dir_name
@@ -249,8 +275,7 @@ def process_directory(dir_path):
     is_sc = ('_SC' in dir_path)
 
     # High Side
-    h_files = ['DIODE1_XH_VCE2.txt','IGBT1_XH_ICE.txt','IGBT1_XH_VCE.txt','IGBT1_XH_VGE.txt']
-    h_files.reverse()
+    h_files = get_files(dir_path,True)
     data_dict_h = {}
     for hf in h_files:
         full_path = os.path.join(dir_path, hf)
@@ -267,8 +292,7 @@ def process_directory(dir_path):
     )
 
     # Low Side
-    l_files = ['DIODE2_XL_VCE2.txt','IGBT2_XL_ICE.txt','IGBT2_XL_VCE.txt','IGBT2_XL_VGE.txt']
-    l_files.reverse()
+    l_files = get_files(dir_path,False)
     data_dict_l = {}
     for lf in l_files:
         full_path = os.path.join(dir_path, lf)
@@ -293,7 +317,7 @@ class NewDirectoryHandler(FileSystemEventHandler):
             process_directory(new_dir_path)
 
 def main():
-    watch_path = r"C:\!FAIL_WFM"
+    watch_path = r"C:\!FAIL_WFM" # r"C:\!jincheon_FAIL"
     event_handler = NewDirectoryHandler()
     observer = Observer()
     observer.schedule(event_handler, watch_path, recursive=True)
